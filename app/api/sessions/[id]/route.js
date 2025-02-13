@@ -1,13 +1,35 @@
 import { NextResponse } from 'next/server';
-const sqlite3 = require('sqlite3').verbose();
-const { resolve } = require('path');
+import sqlite3 from 'sqlite3';
+import { resolve } from 'path';
+import { promises as fs } from 'fs';
 
-const dbPath = resolve(process.cwd(), 'data', 'mydatabase.sqlite');
-const db = new sqlite3.Database(dbPath);
+// Create database connection for each request
+async function getDb() {
+  const dbPath = resolve(process.cwd(), 'data', 'mydatabase.sqlite');
+  
+  // Ensure data directory exists
+  try {
+    await fs.mkdir(resolve(process.cwd(), 'data'), { recursive: true });
+  } catch (err) {
+    console.error('Error creating data directory:', err);
+  }
+
+  return new Promise((resolve, reject) => {
+    const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
+      if (err) {
+        console.error('Database connection error:', err);
+        reject(err);
+      }
+      resolve(db);
+    });
+  });
+}
 
 export async function PUT(request, { params }) {
-
+  let db = null;
+  
   try {
+    db = await getDb();
     const data = await request.json();
     console.log('Received data:', data);
     
@@ -23,8 +45,20 @@ export async function PUT(request, { params }) {
     });
     
     return NextResponse.json({ people: data.people });
+    
   } catch (error) {
     console.error('API Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update participants: ' + error.message }, 
+      { status: 500 }
+    );
+    
+  } finally {
+    // Always close the database connection
+    if (db) {
+      db.close((err) => {
+        if (err) console.error('Error closing database:', err);
+      });
+    }
   }
 }
