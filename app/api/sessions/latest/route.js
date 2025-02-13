@@ -4,8 +4,11 @@ import { resolve } from 'path';
 
 // Initialize database connection
 function getDb() {
-  const dataDir = resolve(process.cwd(), 'data');
-  const dbPath = resolve(dataDir, 'mydatabase.sqlite');
+  // Use /tmp for Vercel's writable directory
+  const dbPath = process.env.VERCEL 
+    ? '/tmp/mydatabase.sqlite' 
+    : resolve(process.cwd(), 'data', 'mydatabase.sqlite');
+    
   const db = new Database(dbPath);
 
   return db;

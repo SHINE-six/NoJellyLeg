@@ -1,13 +1,11 @@
 const Database = require('better-sqlite3');
 const { resolve } = require('path');
-const fs = require('fs');
 
-const dataDir = resolve(process.cwd(), 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-const dbPath = resolve(dataDir, 'mydatabase.sqlite');
+// Use /tmp for Vercel's writable directory
+const dbPath = process.env.VERCEL 
+  ? '/tmp/mydatabase.sqlite' 
+  : resolve(process.cwd(), 'data', 'mydatabase.sqlite');
+  
 const db = new Database(dbPath);
 
 // Create tables
