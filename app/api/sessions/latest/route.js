@@ -1,20 +1,29 @@
 import { NextResponse } from 'next/server';
-const sqlite3 = require('sqlite3').verbose();
-const { resolve } = require('path');
+import Database from 'better-sqlite3';
+import { resolve } from 'path';
 
-const dbPath = resolve(process.cwd(), 'data', 'mydatabase.sqlite');
-const db = new sqlite3.Database(dbPath);
+// Initialize database connection
+function getDb() {
+  const dataDir = resolve(process.cwd(), 'data');
+  const dbPath = resolve(dataDir, 'mydatabase.sqlite');
+  const db = new Database(dbPath);
+
+  return db;
+}
 
 export async function GET() {
+  let db;
   try {
-    const row = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM sessions ORDER BY datetime DESC LIMIT 1', (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    db = getDb();
+    const row = db.prepare(
+      'SELECT * FROM sessions ORDER BY datetime DESC LIMIT 1'
+    ).get();
+
+    console.log('Latest session:', row);
     return NextResponse.json(row);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  } finally {
+    if (db) db.close();
   }
 }

@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server';
-const sqlite3 = require('sqlite3').verbose();
-const { resolve } = require('path');
+import Database from 'better-sqlite3';
+import { resolve } from 'path';
 
-const dbPath = resolve(process.cwd(), 'data', 'mydatabase.sqlite');
-const db = new sqlite3.Database(dbPath);
+// Initialize database connection
+function getDb() {
+  const dataDir = resolve(process.cwd(), 'data');
+  const dbPath = resolve(dataDir, 'mydatabase.sqlite');
+  const db = new Database(dbPath);
+
+  return db;
+}
 
 export async function GET() {
+  let db;
   try {
-    const rows = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM sessions', (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    db = getDb();
+    const rows = db.prepare('SELECT * FROM sessions').all();
     return NextResponse.json(rows);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  } finally {
+    if (db) db.close();
   }
 }
 
