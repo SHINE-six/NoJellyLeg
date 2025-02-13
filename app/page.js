@@ -51,6 +51,7 @@ export default function Home() {
           <div className="text-red-500">{error}</div>
         ) : (
           <div className="space-y-4">
+            <div className="text-blue-700 text-xs">Click on the cyclist to control</div>
             <h3 className="text-xl font-semibold text-gray-800 cursor-pointer" onClick={() => setMoreDetail(!moreDetail)}>
               {currentSession?.name} - {currentSession?.location}
             </h3>

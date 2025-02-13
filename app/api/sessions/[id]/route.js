@@ -1,43 +1,13 @@
 import { NextResponse } from 'next/server';
-import sqlite3 from 'sqlite3';
-import { resolve } from 'path';
-import { promises as fs } from 'fs';
+const sqlite3 = require('sqlite3').verbose();
+const { resolve } = require('path');
 
-async function getDb() {
-  const dbPath = resolve(process.cwd(), 'data', 'mydatabase.sqlite');
-  
-  // Ensure data directory exists
-  try {
-    await fs.mkdir(resolve(process.cwd(), 'data'), { recursive: true });
-    
-    // Check if database exists, if not create it
-    if (!await fs.access(dbPath).catch(() => false)) {
-      await fs.writeFile(dbPath, '');
-      // Set file permissions to allow read/write
-      await fs.chmod(dbPath, 0o666);
-    }
-  } catch (err) {
-    console.error('Error preparing database:', err);
-  }
-
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(dbPath, 
-      sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, 
-      (err) => {
-        if (err) {
-          console.error('Database connection error:', err);
-          reject(err);
-        }
-        resolve(db);
-    });
-  });
-}
+const dbPath = resolve(process.cwd(), 'data', 'mydatabase.sqlite');
+const db = new sqlite3.Database(dbPath);
 
 export async function PUT(request, { params }) {
-  let db = null;
-  
+
   try {
-    db = await getDb();
     const data = await request.json();
     console.log('Received data:', data);
     
@@ -53,20 +23,8 @@ export async function PUT(request, { params }) {
     });
     
     return NextResponse.json({ people: data.people });
-    
   } catch (error) {
     console.error('API Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update participants: ' + error.message }, 
-      { status: 500 }
-    );
-    
-  } finally {
-    // Always close the database connection
-    if (db) {
-      db.close((err) => {
-        if (err) console.error('Error closing database:', err);
-      });
-    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
