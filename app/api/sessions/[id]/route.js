@@ -3,24 +3,32 @@ import sqlite3 from 'sqlite3';
 import { resolve } from 'path';
 import { promises as fs } from 'fs';
 
-// Create database connection for each request
 async function getDb() {
   const dbPath = resolve(process.cwd(), 'data', 'mydatabase.sqlite');
   
   // Ensure data directory exists
   try {
     await fs.mkdir(resolve(process.cwd(), 'data'), { recursive: true });
+    
+    // Check if database exists, if not create it
+    if (!await fs.access(dbPath).catch(() => false)) {
+      await fs.writeFile(dbPath, '');
+      // Set file permissions to allow read/write
+      await fs.chmod(dbPath, 0o666);
+    }
   } catch (err) {
-    console.error('Error creating data directory:', err);
+    console.error('Error preparing database:', err);
   }
 
   return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
-      if (err) {
-        console.error('Database connection error:', err);
-        reject(err);
-      }
-      resolve(db);
+    const db = new sqlite3.Database(dbPath, 
+      sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, 
+      (err) => {
+        if (err) {
+          console.error('Database connection error:', err);
+          reject(err);
+        }
+        resolve(db);
     });
   });
 }
