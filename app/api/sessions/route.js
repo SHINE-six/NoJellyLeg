@@ -1,29 +1,17 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import { resolve } from 'path';
+import { createClient } from '@libsql/client';
 
-// Initialize database connection
-function getDb() {
-  // Use /tmp for Vercel's writable directory
-  const dbPath = process.env.VERCEL 
-    ? '/tmp/mydatabase.sqlite' 
-    : resolve(process.cwd(), 'data', 'mydatabase.sqlite');
-    
-  const db = new Database(dbPath);
-
-  return db;
-}
+const client = createClient({
+  url: process.env.TURSO_DB_URL,
+  authToken: process.env.TURSO_DB_TOKEN,
+});
 
 export async function GET() {
-  let db;
   try {
-    db = getDb();
-    const rows = db.prepare('SELECT * FROM sessions').all();
-    return NextResponse.json(rows);
+    const result = await client.query('SELECT * FROM sessions');
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
-  } finally {
-    if (db) db.close();
   }
 }
 

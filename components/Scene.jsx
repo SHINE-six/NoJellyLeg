@@ -18,7 +18,7 @@ export default function Scene({ participants, joyStickMovement }) {
   return (
     <>
       <Park />
-      {participants.map((name, index) => (
+      {participants?.map((name, index) => (
         <group key={index} position={[index * 2, 0, 0]} onClick={(e) => handleSetFocusUser(e, index)}>
           {/* If the participant is the focuesed index, then pass enabled = true */}
           {/* <Participant name={name} enabled={focusUser === index}/> */}

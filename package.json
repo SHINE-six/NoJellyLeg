@@ -6,19 +6,16 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "postinstall": "node scripts/initDB.js",
     "lint": "next lint"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
     "@react-three/drei": "^9.121.4",
     "@react-three/fiber": "^9.0.0-alpha.8",
-    "better-sqlite3": "^11.8.1",
     "fs": "^0.0.1-security",
     "next": "15.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "three": "^0.173.0"
   },
   "devDependencies": {

@@ -75,19 +75,21 @@ export default function Home() {
                 </form>
                 <div className="text-gray-700">
                   <span className="font-medium">Participants:</span>{' '}
-                  {participants.map((p, i) => (
+                  {participants?.map((p, i) => (
                     <span key={i}>
                       {p}{i < participants.length - 1 ? ', ' : ''}
                     </span>
                   ))}
                 </div>
-                <Image
-                  src={currentSession.image}
-                  width={500}
-                  height={500}
-                  alt="Map"
-                  className="rounded-lg"
-                />
+                {currentSession?.image && (
+                  <Image
+                    src={currentSession.image}
+                    width={500}
+                    height={500}
+                    alt="Map"
+                    className="rounded-lg"
+                  />
+                )}
               </>
               )
               :
