@@ -98,10 +98,12 @@ export default function ImageUpload({ sessionId }: { sessionId: number }) {
             } else {
               setUploadProgress(prev => ({...prev, [file.name]: `Failed: ${result.error || 'Upload failed'}`}));
             }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (uploadError: any) {
             console.error('Upload failed:', uploadError);
             setUploadProgress(prev => ({...prev, [file.name]: `Failed: ${uploadError.message || 'Upload failed'}`}));
           }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (fileError: any) {
           console.error('File processing failed:', fileError);
           setUploadProgress(prev => ({...prev, [file.name]: `Failed: ${fileError.message || 'Processing failed'}`}));

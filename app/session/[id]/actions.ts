@@ -8,7 +8,7 @@ const MAX_HEIGHT = 1920;
 // Maximum file size in bytes (3MB)
 const MAX_FILE_SIZE = 3 * 1024 * 1024;
 
-async function resizeImage(buffer: Buffer, fileType: string): Promise<Buffer> {
+async function resizeImage(buffer: Buffer): Promise<Buffer> {
   try {
     // Use sharp to resize the image while maintaining aspect ratio
     const image = sharp(buffer);
@@ -85,7 +85,7 @@ export async function uploadImage(formData: FormData, sessionId: number) {
         let buffer = Buffer.from(arrayBuffer);
         
         // Resize the image to reduce its size
-        buffer = await resizeImage(buffer, fileType);
+        buffer = await resizeImage(buffer);
         
         // Check if the resized image is still too large for the database
         if (buffer.length > MAX_FILE_SIZE) {
@@ -129,6 +129,7 @@ export async function uploadImage(formData: FormData, sessionId: number) {
         try {
           await addSessionImage(parsedSessionId, dataUrl);
           return { success: true };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (sessionError: any) {
           console.error('Session service error:', sessionError);
           
@@ -145,14 +146,17 @@ export async function uploadImage(formData: FormData, sessionId: number) {
             error: 'Failed to add image to session: ' + (sessionError.message || 'Unknown error') 
           };
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (encodeError: any) {
         console.error('File encoding error:', encodeError);
         return { success: false, error: 'Failed to process file data: ' + (encodeError.message || 'Unknown error') };
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (processingError: any) {
       console.error('Image processing error:', processingError);
       return { success: false, error: 'Failed to process image: ' + (processingError.message || 'Unknown error') };
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Upload image error:', error);
     return { success: false, error: 'Server action failed: ' + (error.message || 'Unknown error') };
