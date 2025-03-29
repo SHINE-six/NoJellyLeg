@@ -1,5 +1,7 @@
-// /session/[id]/page.tsx
-import { notFound } from "next/navigation";
+'use client';
+
+import { useState, useEffect } from "react";
+import { notFound, useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getSessionById } from "../../../utils/sessionService";
@@ -15,27 +17,87 @@ interface Session {
   content_images: string;
 }
 
-export default async function SessionPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
-  const { id } = await params;
+export default function SessionPage() {
+  const params = useParams();
+  const { id } = params as { id: string };
   const sessionId = parseInt(id);
   
-  if (isNaN(sessionId)) {
-    notFound();
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [contentImages, setContentImages] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if (isNaN(sessionId)) {
+      notFound();
+      return;
+    }
+
+    async function fetchSessionData() {
+      try {
+        setIsLoading(true);
+        const sessionData = await getSessionById(sessionId) as Session | null;
+        
+        if (!sessionData) {
+          notFound();
+          return;
+        }
+        
+        setSession(sessionData);
+        
+        // Parse content images from JSON string
+        try {
+          const images = JSON.parse(String(sessionData.content_images) || '[]');
+          setContentImages(images);
+        } catch (err) {
+          console.error("Error parsing content images:", err);
+          setContentImages([]);
+        }
+      } catch (err) {
+        console.error("Error fetching session:", err);
+        setError("Failed to load session. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  
+    fetchSessionData();
+  }, [sessionId]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading session...</p>
+        </div>
+      </div>
+    );
   }
 
-  const session = await getSessionById(sessionId) as Session | null;
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error</h2>
+          <p className="text-gray-600 dark:text-gray-300">{error}</p>
+          <Link 
+            href="/"
+            className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+          >
+            Go back home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
-    notFound();
+    return null; // This shouldn't happen, but just as a fallback
   }
-
-  // Parse content images from JSON string - this comes from the modified getSessionById function
-  // that fetches images from session_images table and returns them as a JSON string
-  const contentImages = JSON.parse(String(session.content_images) || '[]');
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -67,7 +129,7 @@ export default async function SessionPage({
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-gray-500 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M6 2a1 1 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 10-2 0v1H7V3a1 1 00-1-1zm0 5a1 1 000 2h8a1 1 100-2H6z" clipRule="evenodd" />
               </svg>
-              {new Date(String(session.date)).toLocaleDateString()}
+              {session.date ? new Date(String(session.date)).toLocaleDateString() : 'No date'}
             </div>
             {session.people && (
               <div className="flex items-center">
@@ -115,12 +177,10 @@ export default async function SessionPage({
           </div>
         )}
 
-
         {/* Image upload section */}
         <div className="mt-8">
           <ImageUpload sessionId={sessionId} />
         </div>
-
       </div>
     </div>
   );

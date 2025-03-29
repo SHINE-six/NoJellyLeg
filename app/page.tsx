@@ -1,10 +1,28 @@
+'use client'
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { getAllSessions } from "../utils/sessionService";
 
-export default async function Home() {
-  // Fetch all sessions to display in grid
-  const sessions = await getAllSessions();
+export default function Home() {
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const sessionsData = await getAllSessions();
+        setSessions(sessionsData);
+      } catch (error) {
+        console.error("Failed to fetch sessions:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -18,7 +36,11 @@ export default async function Home() {
           </p>
         </header>
 
-        {sessions.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-20">
+            <p className="text-xl text-gray-500 dark:text-gray-400">Loading sessions...</p>
+          </div>
+        ) : sessions.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-xl text-gray-500 dark:text-gray-400">No sessions found</p>
           </div>
