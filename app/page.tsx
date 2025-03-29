@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { getAllSessions } from "../utils/sessionService";
 
 export default function Home() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
