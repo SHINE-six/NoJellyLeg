@@ -1,4 +1,4 @@
-import db from '../utils/db';
+import db from './db';
 
 /**
  * Functions for interacting with the sessions and session_images tables

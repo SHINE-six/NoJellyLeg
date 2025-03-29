@@ -8,8 +8,10 @@ CREATE TABLE IF NOT EXISTS sessions (
   date TEXT
 );
 
+SELECT * FROM sessions;
+
 DELETE FROM sessions
-WHERE id = 2;
+WHERE id in ('7', '8', '9');
 
 CREATE TABLE IF NOT EXISTS session_images (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
