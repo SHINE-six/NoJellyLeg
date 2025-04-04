@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "🚲 No More JellyLeg",
+  title: "No More JellyLeg",
   description: "Cycling group of Go4Ride",
 };
 
