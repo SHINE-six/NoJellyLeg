@@ -5,7 +5,7 @@ import { notFound, useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getSessionById } from "../../../utils/sessionService";
-import ImageUpload from "./ImageUpload";
+// import ImageUpload from "./ImageUpload";
 
 interface Session {
   id: number;
@@ -178,9 +178,9 @@ export default function SessionPage() {
         )}
 
         {/* Image upload section */}
-        <div className="mt-8">
+        {/* <div className="mt-8">
           <ImageUpload sessionId={sessionId} />
-        </div>
+        </div> */}
       </div>
     </div>
   );
