@@ -14,6 +14,17 @@ export default function Home() {
     const fetchSessions = async () => {
       try {
         const sessionsData = await getAllSessions();
+        console.log("Fetched sessions:", sessionsData);
+        // Log the first session with its cover_image to help debug
+        if (sessionsData.length > 0) {
+          console.log("First session details:", {
+            id: sessionsData[0].id,
+            name: sessionsData[0].name,
+            cover_image: sessionsData[0].cover_image,
+            media_count: sessionsData[0].media_count,
+            session_media_s3: sessionsData[0].session_media_s3
+          });
+        }
         setSessions(sessionsData);
       } catch (error) {
         console.error("Failed to fetch sessions:", error);
@@ -122,7 +133,7 @@ export default function Home() {
                         {new Date(String(session.date)).toLocaleDateString()}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {String(session.image_count)} photos
+                        {String(session.media_count || 0)} photos
                       </span>
                     </div>
                   </div>

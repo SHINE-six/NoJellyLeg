@@ -2,19 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { notFound, useParams } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
+import MediaDisplay, { isVideoSource } from "../../../components/MediaDisplay";
 import { getSessionById } from "../../../utils/sessionService";
-// import ImageUpload from "./ImageUpload";
 
 interface Session {
   id: number;
   name: string;
   location: string;
   cover_image: string | null;
+  map: string | null;
   people: string | null;
   date: string | null;
-  content_images: string;
+  session_media_s3?: string[] | null;
+  content_medias?: string[];
+  media_count?: number;
 }
 
 export default function SessionPage() {
@@ -45,12 +47,26 @@ export default function SessionPage() {
 
         setSession(sessionData);
 
-        // Parse content images from JSON string
-        try {
-          const images = JSON.parse(String(sessionData.content_images) || '[]');
-          setContentImages(images);
-        } catch (err) {
-          console.error("Error parsing content images:", err);
+        // Use the content_medias array that's already available from getSessionById
+        if (sessionData.content_medias && Array.isArray(sessionData.content_medias)) {
+          setContentImages(sessionData.content_medias);
+        } else if (sessionData.session_media_s3) {
+          // As a fallback, check if session_media_s3 is available
+          try {
+            const mediaArray = typeof sessionData.session_media_s3 === 'string'
+              ? JSON.parse(sessionData.session_media_s3)
+              : sessionData.session_media_s3;
+              
+            if (Array.isArray(mediaArray)) {
+              setContentImages(mediaArray);
+            } else {
+              setContentImages([]);
+            }
+          } catch (err) {
+            console.error("Error processing session media:", err);
+            setContentImages([]);
+          }
+        } else {
           setContentImages([]);
         }
       } catch (err) {
@@ -167,45 +183,69 @@ export default function SessionPage() {
           </div>
         </header>
 
-        {/* Cover image */}
+        {/* Cover image or video */}
         {session.cover_image && (
           <div className="relative w-full mb-10 rounded-lg overflow-hidden shadow-lg aspect-[16/9]">
-            <Image
+            <MediaDisplay
               src={String(session.cover_image)}
               alt={String(session.name)}
-              fill
-              className="object-contain"
+              layout="fill"
+              objectFit="contain"
               priority
+              className="object-contain"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1280px"
             />
           </div>
         )}
 
-        {/* Content images */}
-        {contentImages.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {contentImages.map((imageUrl: string, index: number) => (
-              <div key={index} className="aspect-square relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300">
-                <Image
-                  src={imageUrl}
-                  alt={`Photo ${index + 1} from ${session.name}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20">
-            <p className="text-xl text-gray-500 dark:text-gray-400">No photos available</p>
+        {/* Map embed */}
+        {session.map && (
+          <div className="w-full mb-10 rounded-lg overflow-hidden shadow-lg">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
+              <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Route Map</h2>
+              <div 
+          dangerouslySetInnerHTML={{ __html: session.map }} 
+          className="w-full" 
+          style={{ 
+            height: "400px", 
+            width: "100%" 
+          }}
+              />
+              <style jsx global>{`
+          .w-full iframe {
+            width: 100% !important;
+            height: 100% !important;
+          }
+              `}</style>
+            </div>
           </div>
         )}
 
-        {/* Image upload section */}
-        {/* <div className="mt-8">
-          <ImageUpload sessionId={sessionId} />
-        </div> */}
+        {/* Content media (images and videos) */}
+        {contentImages.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {contentImages.map((mediaUrl: string, index: number) => {
+              const isVideo = isVideoSource(mediaUrl);
+              return (
+                <div key={index} className={`${isVideo ? 'aspect-video' : 'aspect-square'} relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300`}>
+                  <MediaDisplay
+                    src={mediaUrl}
+                    alt={`${isVideo ? 'Video' : 'Photo'} ${index + 1} from ${session.name}`}
+                    layout="fill"
+                    objectFit="cover"
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <p className="text-xl text-gray-500 dark:text-gray-400">No media available</p>
+          </div>
+        )}
+
       </div>
     </div>
   );

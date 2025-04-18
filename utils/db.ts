@@ -1,35 +1,55 @@
-import { createClient } from '@libsql/client';
-import * as dotenv from 'dotenv';
-import path from 'path';
+import mysql from 'mysql2/promise';
 
-// Load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+// Required environment variables for AWS RDS MySQL
+const DB_HOST = process.env.NEXT_PUBLIC_DB_HOST;
+const DB_USER = process.env.NEXT_PUBLIC_DB_USER;
+const DB_PASSWORD = process.env.NEXT_PUBLIC_DB_PASSWORD; 
+const DB_NAME = process.env.NEXT_PUBLIC_DB_NAME;
+const DB_PORT = process.env.NEXT_PUBLIC_DB_PORT || '3306';
 
-// Required environment variables
-const TURSO_DATABASE_URL = process.env.NEXT_PUBLIC_TURSO_DATABASE_URL;
-const TURSO_AUTH_TOKEN = process.env.NEXT_PUBLIC_TURSO_AUTH_TOKEN;
+// Create a MySQL connection pool - but only on the server side
+let pool: mysql.Pool | null = null;
 
+// Make sure this only runs on the server side
+if (typeof window === 'undefined') {
+  // Server-side code
+  // Validate required environment variables
+  if (!DB_HOST || !DB_USER || !DB_PASSWORD || !DB_NAME) {
+    throw new Error('Missing required database environment variables. Please check your .env.local file.');
+  }
 
-if (!TURSO_DATABASE_URL) {
-  throw new Error('TURSO_DATABASE_URL environment variable is required');
+  // Create a MySQL connection pool
+  pool = mysql.createPool({
+    host: DB_HOST,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    database: DB_NAME,
+    port: parseInt(DB_PORT, 10),
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+  });
 }
 
-// Create client with auth token if available
-const client = createClient({
-  url: TURSO_DATABASE_URL,
-  ...(TURSO_AUTH_TOKEN && { authToken: TURSO_AUTH_TOKEN }),
-});
-
 /**
- * Execute a query against the Turso database
+ * Execute a query against the MySQL database
  * @param sql The SQL query to execute
  * @param params Optional parameters for the query
  * @returns Result of the query
  */
-// @ts-nocheck
-export async function query(sql: string, params = []) {
+export async function query(sql: string, params: any[] = []) {
+  // Ensure this function is only called on the server
+  if (typeof window !== 'undefined') {
+    throw new Error('Database queries can only be executed on the server side');
+  }
+  
+  if (!pool) {
+    throw new Error('Database connection pool not initialized');
+  }
+  
   try {
-    return await client.execute({ sql, args: params });
+    const [rows, fields] = await pool.query(sql, params);
+    return { rows, fields };
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
@@ -38,29 +58,36 @@ export async function query(sql: string, params = []) {
 
 /**
  * Execute a batch of queries as a transaction
- * @param queries Array of {sql, params} objects to execute
- * @returns Results of the transaction
+ * @param queries Array of query objects with sql and params
+ * @returns Array of results from each query
  */
-export async function transaction(queries: Array<{ 
-  sql: string; 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  params?: any 
-}>) {
+export async function transaction(queries: { sql: string; params: any[] }[]) {
+  // Ensure this function is only called on the server
+  if (typeof window !== 'undefined') {
+    throw new Error('Database transactions can only be executed on the server side');
+  }
+  
+  if (!pool) {
+    throw new Error('Database connection pool not initialized');
+  }
+  
+  const connection = await pool.getConnection();
   try {
-    return await client.batch(
-      queries.map(({ sql, params = [] }) => ({
-        sql,
-        args: params,
-      }))
-    );
+    await connection.beginTransaction();
+    
+    const results = [];
+    for (const { sql, params } of queries) {
+      const [rows] = await connection.query(sql, params);
+      results.push({ rows });
+    }
+    
+    await connection.commit();
+    return results;
   } catch (error) {
-    console.error('Database transaction error:', error);
+    await connection.rollback();
+    console.error('Transaction error:', error);
     throw error;
+  } finally {
+    connection.release();
   }
 }
-
-export default {
-  query,
-  transaction,
-  client,
-};
