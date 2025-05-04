@@ -36,14 +36,34 @@ export async function uploadToS3(dataUrl: string, type: 'cover' | 'content'): Pr
 
   try {
     // Extract content type and base64 data from data URL
-    const matches = dataUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-    
-    if (!matches || matches.length !== 3) {
-      throw new Error('Invalid data URL');
+    // Use a more forgiving approach for large files
+    if (!dataUrl.startsWith('data:')) {
+      throw new Error('Invalid data URL format: must start with "data:"');
     }
     
-    const contentType = matches[1];
-    const base64Data = matches[2];
+    const dataStartIndex = dataUrl.indexOf(',');
+    if (dataStartIndex === -1) {
+      throw new Error('Invalid data URL format: missing comma separator');
+    }
+    
+    const metaPart = dataUrl.substring(0, dataStartIndex);
+    // More flexible regex that handles various data URL formats
+    const contentTypeMatch = metaPart.match(/^data:([^;]+);?(base64)?$/);
+    if (!contentTypeMatch) {
+      console.error('Invalid metaPart format:', metaPart);
+      throw new Error('Invalid data URL format: content type not properly formatted');
+    }
+    
+    const contentType = contentTypeMatch[1];
+    const base64Data = dataUrl.substring(dataStartIndex + 1);
+    
+    if (!base64Data || base64Data.length === 0) {
+      throw new Error('Invalid data URL: empty data portion');
+    }
+    
+    // For debugging large file uploads
+    console.log(`Processing file of type: ${contentType}, base64 length: ${base64Data.length}`);
+    
     const buffer = Buffer.from(base64Data, 'base64');
     
     // Generate a unique filename with proper extension

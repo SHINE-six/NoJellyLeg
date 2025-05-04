@@ -56,16 +56,17 @@ export default function MediaDisplay({
   // Return video element for video sources
   if (isVideo || imageError) {
     return (
-      <div className={`relative ${className}`} style={width && height ? {width, height} : {width: '100%', height: '100%'}}>
+      <div className={`relative ${className}`} style={width && height ? {width, height} : {width: '100%', height: '100%'}}>      
         <video 
           src={src}
           controls
-          className={`${objectFit === 'contain' ? 'object-contain' : 'object-cover'} w-full h-full`}
-          loop={true}
-          autoPlay={true}
+          className='object-contain w-full h-full'
           playsInline
+          muted
           preload="metadata"
           onError={() => console.error("Video failed to load:", src)}
+          controlsList="nodownload"
+          webkit-playsinline="true"
         >
           {alt && <track kind="captions" label={alt} />}
           Your browser does not support the video tag.
