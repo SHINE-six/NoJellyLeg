@@ -2,7 +2,20 @@
 
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { createSession, getAllSessions, updateSession, getSessionById } from '../../utils/sessionService';
-import Image from 'next/image';
+import MediaDisplay from '../../components/MediaDisplay';
+
+// Define Session type that matches the service's structure
+interface Session {
+  id: number;
+  name: string;
+  location: string;
+  cover_image: string | null;  // Updated to allow null
+  map: string | null;
+  people: string;
+  date: string;
+  media_count?: number;
+  content_medias?: string[];
+}
 
 // Hardcoded credentials
 const ADMIN_USERNAME = "ADMIN";
@@ -21,22 +34,21 @@ export default function AdminPage() {
   const [people, setPeople] = useState('');
   const [date, setDate] = useState('');
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [contentImages, setContentImages] = useState<string[]>([]);
+  const [map, setMap] = useState<string>('');
+  const [contentMedias, setContentMedias] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
   
   // Session state for adding photos to existing sessions
-  // @ts-nocheck
-  const [existingSessions, setExistingSessions] = useState([]);
-  // @ts-nocheck
-  const [selectedSession, setSelectedSession] = useState(null);
+  const [existingSessions, setExistingSessions] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [addingToExisting, setAddingToExisting] = useState(false);
-  const [newContentImages, setNewContentImages] = useState<string[]>([]);
+  const [newContentMedias, setNewContentMedias] = useState<string[]>([]);
   
   // Refs for file inputs
   const coverImageInputRef = useRef<HTMLInputElement>(null);
-  const contentImagesInputRef = useRef<HTMLInputElement>(null);
-  const newContentImagesInputRef = useRef<HTMLInputElement>(null);
+  const contentMediasInputRef = useRef<HTMLInputElement>(null);
+  const newContentMediasInputRef = useRef<HTMLInputElement>(null);
   
   // Fetch all sessions
   useEffect(() => {
@@ -60,7 +72,7 @@ export default function AdminPage() {
       const session = await getSessionById(id);
       if (session) {
         setSelectedSession(session);
-        setNewContentImages([]);
+        setNewContentMedias([]);
       }
     } catch (error) {
       console.error('Error fetching session:', error);
@@ -78,7 +90,7 @@ export default function AdminPage() {
     }
   };
   
-  // Handle image file reading
+  // Handle media file reading
   const handleFileRead = (file: File, isCover: boolean, isNewContent: boolean = false) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -86,15 +98,15 @@ export default function AdminPage() {
       if (isCover) {
         setCoverImage(result);
       } else if (isNewContent) {
-        setNewContentImages(prev => [...prev, result]);
+        setNewContentMedias(prev => [...prev, result]);
       } else {
-        setContentImages(prev => [...prev, result]);
+        setContentMedias(prev => [...prev, result]);
       }
     };
     reader.readAsDataURL(file);
   };
   
-  // Cover image upload handler
+  // Cover media upload handler
   const handleCoverImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files[0]) {
@@ -102,8 +114,8 @@ export default function AdminPage() {
     }
   };
   
-  // Content images upload handler
-  const handleContentImagesChange = (e: ChangeEvent<HTMLInputElement>) => {
+  // Content medias upload handler
+  const handleContentMediasChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length) {
       Array.from(files).forEach(file => {
@@ -112,8 +124,8 @@ export default function AdminPage() {
     }
   };
   
-  // New content images upload handler for existing sessions
-  const handleNewContentImagesChange = (e: ChangeEvent<HTMLInputElement>) => {
+  // New content medias upload handler for existing sessions
+  const handleNewContentMediasChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length) {
       Array.from(files).forEach(file => {
@@ -123,8 +135,11 @@ export default function AdminPage() {
   };
   
   // Drag and drop handlers
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, isCover?: boolean) => {
     e.preventDefault();
+    if (isCover) {
+      e.currentTarget.classList.add('border-blue-500');
+    }
     e.currentTarget.classList.add('border-blue-500');
   };
   
@@ -142,7 +157,7 @@ export default function AdminPage() {
         handleFileRead(files[0], true);
       } else {
         Array.from(files).forEach(file => {
-          if (file.type.startsWith('image/')) {
+          if (file.type.startsWith('media/')) {
             handleFileRead(file, false, isNewContent);
           }
         });
@@ -150,21 +165,21 @@ export default function AdminPage() {
     }
   };
   
-  // Remove content image
-  const handleRemoveContentImage = (index: number) => {
-    setContentImages(prev => prev.filter((_, i) => i !== index));
+  // Remove content media
+  const handleRemoveContentMedia = (index: number) => {
+    setContentMedias(prev => prev.filter((_, i) => i !== index));
   };
   
-  // Remove new content image
-  const handleRemoveNewContentImage = (index: number) => {
-    setNewContentImages(prev => prev.filter((_, i) => i !== index));
+  // Remove new content media
+  const handleRemoveNewContentMedia = (index: number) => {
+    setNewContentMedias(prev => prev.filter((_, i) => i !== index));
   };
   
   // Form submission for creating a new session
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !location || !coverImage || contentImages.length === 0) {
+    if (!name || !location || !coverImage || contentMedias.length === 0) {
       setSubmitMessage('All fields are required');
       return;
     }
@@ -174,12 +189,13 @@ export default function AdminPage() {
       setSubmitMessage('Submitting...');
       
       // The createSession function now handles inserting the session first
-      // and then inserting each image into the session_images table
+      // and then inserting each media into the session_medias table
       await createSession({
         name,
         location,
         cover_image: coverImage,
-        content_images: contentImages,
+        map: map || undefined,
+        content_medias: contentMedias,
         people,
         date
       });
@@ -190,7 +206,8 @@ export default function AdminPage() {
       setPeople('');
       setDate('');
       setCoverImage(null);
-      setContentImages([]);
+      setMap('');
+      setContentMedias([]);
       setSubmitMessage('Session created successfully!');
       
       // Refresh the sessions list
@@ -208,7 +225,7 @@ export default function AdminPage() {
   const handleAddPhotos = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedSession || newContentImages.length === 0) {
+    if (!selectedSession || newContentMedias.length === 0) {
       setSubmitMessage('Please select a session and add new photos');
       return;
     }
@@ -217,14 +234,14 @@ export default function AdminPage() {
       setIsSubmitting(true);
       setSubmitMessage('Adding photos...');
       
-      // The updated updateSession function now handles adding images to the session_images table
+      // The updated updateSession function now handles adding medias to the session_medias table
       await updateSession(selectedSession.id, {
-        content_images: newContentImages
+        content_medias: newContentMedias
       });
       
       // Reset form
       setSelectedSession(null);
-      setNewContentImages([]);
+      setNewContentMedias([]);
       setSubmitMessage('Photos added successfully!');
       
       // Refresh the sessions list
@@ -248,7 +265,7 @@ export default function AdminPage() {
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="w-full max-w-md p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        <div className="w-full max-w-xl p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
           <h1 className="text-2xl font-bold mb-6 text-center">Admin Login</h1>
           
           <form onSubmit={handleLogin} className="space-y-4">
@@ -301,7 +318,7 @@ export default function AdminPage() {
   // Admin dashboard with session upload form
   return (
     <div className="min-h-screen p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <button
@@ -373,27 +390,26 @@ export default function AdminPage() {
                 </div>
               )}
               
-              {/* New Content Images Upload */}
+              {/* New Content Medias Upload */}
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Add New Photos
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-md p-4 text-center ${
-                    newContentImages.length > 0 ? 'border-green-400' : 'border-gray-300'
+                    newContentMedias.length > 0 ? 'border-green-400' : 'border-gray-300'
                   }`}
                   onDragOver={(e) => handleDragOver(e, false)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, false, true)}
-                  onClick={() => newContentImagesInputRef.current?.click()}
+                  onClick={() => newContentMediasInputRef.current?.click()}
                 >
-                  {newContentImages.length > 0 ? (
+                  {newContentMedias.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {newContentImages.map((img, index) => (
-                        <div key={index} className="relative h-32">
-                          <Image
+                      {newContentMedias.map((img, index) => (                          <div key={index} className="relative h-32">
+                          <MediaDisplay
                             src={img}
-                            alt={`New content image ${index + 1}`}
+                            alt={`New content media ${index + 1}`}
                             layout="fill"
                             objectFit="cover"
                             className="rounded-md"
@@ -403,7 +419,7 @@ export default function AdminPage() {
                             className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full text-xs"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleRemoveNewContentImage(index);
+                              handleRemoveNewContentMedia(index);
                             }}
                           >
                             ✕
@@ -419,30 +435,30 @@ export default function AdminPage() {
                   ) : (
                     <div className="p-6">
                       <p className="text-gray-500">
-                        Drag & drop new images here, or click to select
+                        Drag & drop new medias here, or click to select
                       </p>
                     </div>
                   )}
                   <input
-                    ref={newContentImagesInputRef}
+                    ref={newContentMediasInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="media/*"
                     multiple
-                    onChange={handleNewContentImagesChange}
+                    onChange={handleNewContentMediasChange}
                     className="hidden"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  You can upload multiple new images
+                  You can upload multiple new medias
                 </p>
               </div>
               
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={isSubmitting || !selectedSession || newContentImages.length === 0}
+                  disabled={isSubmitting || !selectedSession || newContentMedias.length === 0}
                   className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 ${
-                    isSubmitting || !selectedSession || newContentImages.length === 0 ? 'opacity-70 cursor-not-allowed' : ''
+                    isSubmitting || !selectedSession || newContentMedias.length === 0 ? 'opacity-70 cursor-not-allowed' : ''
                   }`}
                 >
                   {isSubmitting ? 'Adding...' : 'Add Photos'}
@@ -514,6 +530,33 @@ export default function AdminPage() {
                 </p>
               </div>
               
+              {/* Map Embed Input */}
+              <div>
+                <label htmlFor="map" className="block text-sm font-medium mb-1">
+                  Route Map Embed (Optional)
+                </label>
+                <textarea
+                  id="map"
+                  value={map}
+                  onChange={(e) => setMap(e.target.value)}
+                  placeholder="Paste embed iframe code here (e.g., from Bikemap.net, Strava, Google Maps, etc.)"
+                  className="w-full p-2 border rounded-md font-mono text-sm h-32"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Paste the full iframe embed code for your route map
+                </p>
+                
+                {/* Map Preview */}
+                {map && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium mb-1">Map Preview</label>
+                    <div className="p-4 border rounded-md bg-gray-50 dark:bg-gray-700">
+                      <div dangerouslySetInnerHTML={{ __html: map }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               {/* Cover Image Upload */}
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -530,7 +573,7 @@ export default function AdminPage() {
                 >
                   {coverImage ? (
                     <div className="relative h-48 w-full">
-                      <Image
+                      <MediaDisplay
                         src={coverImage}
                         alt="Cover preview"
                         layout="fill"
@@ -558,34 +601,34 @@ export default function AdminPage() {
                   <input
                     ref={coverImageInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="media/*"
                     onChange={handleCoverImageChange}
                     className="hidden"
                   />
                 </div>
               </div>
               
-              {/* Content Images Upload */}
+              {/* Content Medias Upload */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Content Images
+                  Content Medias
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-md p-4 text-center ${
-                    contentImages.length > 0 ? 'border-green-400' : 'border-gray-300'
+                    contentMedias.length > 0 ? 'border-green-400' : 'border-gray-300'
                   }`}
                   onDragOver={(e) => handleDragOver(e, false)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, false)}
-                  onClick={() => contentImagesInputRef.current?.click()}
+                  onClick={() => contentMediasInputRef.current?.click()}
                 >
-                  {contentImages.length > 0 ? (
+                  {contentMedias.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {contentImages.map((img, index) => (
+                      {contentMedias.map((img, index) => (
                         <div key={index} className="relative h-32">
-                          <Image
+                          <MediaDisplay
                             src={img}
-                            alt={`Content image ${index + 1}`}
+                            alt={`Content media ${index + 1}`}
                             layout="fill"
                             objectFit="cover"
                             className="rounded-md"
@@ -595,7 +638,7 @@ export default function AdminPage() {
                             className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full text-xs"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleRemoveContentImage(index);
+                              handleRemoveContentMedia(index);
                             }}
                           >
                             ✕
@@ -611,21 +654,21 @@ export default function AdminPage() {
                   ) : (
                     <div className="p-6">
                       <p className="text-gray-500">
-                        Drag & drop content images here, or click to select
+                        Drag & drop content medias here, or click to select
                       </p>
                     </div>
                   )}
                   <input
-                    ref={contentImagesInputRef}
+                    ref={contentMediasInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="media/*"
                     multiple
-                    onChange={handleContentImagesChange}
+                    onChange={handleContentMediasChange}
                     className="hidden"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  You can upload multiple content images
+                  You can upload multiple content medias
                 </p>
               </div>
               
